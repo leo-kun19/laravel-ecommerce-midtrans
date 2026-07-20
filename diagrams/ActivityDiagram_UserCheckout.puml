@@ -1,0 +1,130 @@
+@startuml User Checkout Process
+
+|User|
+start
+:Browse Products;
+:Add Products to Cart;
+:View Shopping Cart;
+:Click Checkout;
+
+|System|
+:Validate User Authentication;
+
+if (User Authenticated?) then (yes)
+  |User|
+  :Fill Shipping Information;
+  note right
+    - Name
+    - Phone
+    - Shipping Address
+    - Notes
+  end note
+  
+  :Submit Order;
+  
+  |System|
+  :Validate Order Data;
+  
+  if (Validation Success?) then (yes)
+    :Begin Database Transaction;
+    
+    :Create Order Record;
+    note right
+      Status: pending
+      Generate order_code
+    end note
+    
+    :Create Order Items;
+    
+    :Decrease Product Stock;
+    
+    :Calculate Total Amount;
+    note right
+      Product prices + Shipping (Rp 20.000)
+    end note
+    
+    :Update Order Total;
+    
+    :Prepare Midtrans Parameters;
+    note right
+      - Transaction details
+      - Item details
+      - Customer details
+    end note
+    
+    :Request Snap Token from Midtrans;
+    
+    if (Snap Token Generated?) then (yes)
+      :Save Snap Token to Order;
+      
+      :Commit Transaction;
+      
+      |User|
+      :Display Payment Page;
+      note right
+        Midtrans Snap popup
+      end note
+      
+      :Select Payment Method;
+      
+      :Complete Payment;
+      
+      |Midtrans|
+      :Process Payment;
+      
+      :Send Notification to Webhook;
+      
+      |System|
+      :Receive Payment Notification;
+      
+      :Validate Notification;
+      
+      :Update Order Status;
+      note right
+        Status mapping:
+        - settlement → paid
+        - pending → pending
+        - deny/expire/cancel → cancelled
+      end note
+      
+      :Save Transaction Details;
+      note right
+        - midtrans_transaction_id
+        - midtrans_payment_type
+      end note
+      
+      |User|
+      if (Payment Success?) then (yes)
+        :Show Success Message;
+        :Redirect to Order History;
+        stop
+      else (failed)
+        :Show Error Message;
+        :Order Status: Cancelled;
+        stop
+      endif
+      
+    else (failed)
+      :Rollback Transaction;
+      
+      |User|
+      :Show Error Message;
+      note right
+        "Failed to generate payment token"
+      end note
+      stop
+    endif
+    
+  else (failed)
+    |User|
+    :Show Validation Errors;
+    stop
+  endif
+  
+else (no)
+  |User|
+  :Redirect to Login Page;
+  stop
+endif
+
+@enduml

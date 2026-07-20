@@ -1,0 +1,125 @@
+@startuml Authentication Process
+
+|User|
+start
+
+if (Has Account?) then (no)
+  ' Registration Flow
+  :Click Register;
+  :Fill Registration Form;
+  note right
+    Required fields:
+    - Name
+    - Email (unique)
+    - Password (min 8 chars)
+    - Password Confirmation
+    - Phone
+    - Address
+  end note
+  
+  :Submit Registration;
+  
+  |System|
+  :Validate Input;
+  
+  if (Validation Success?) then (yes)
+    :Begin Database Transaction;
+    
+    :Check Email Uniqueness;
+    
+    if (Email Available?) then (yes)
+      :Hash Password;
+      
+      :Create User Record;
+      note right
+        Default role: user
+      end note
+      
+      :Trigger Registered Event;
+      
+      :Auto Login User;
+      
+      :Create Session;
+      
+      :Commit Transaction;
+      
+      |User|
+      :Redirect to Home Page;
+      :Show Success Message;
+      
+    else (duplicate)
+      :Rollback Transaction;
+      
+      |User|
+      :Show Error: Email Taken;
+    endif
+    
+  else (failed)
+    |User|
+    :Show Validation Errors;
+  endif
+
+else (yes)
+  ' Login Flow
+  :Click Login;
+  :Enter Credentials;
+  note right
+    - Email
+    - Password
+    - Remember Me (optional)
+  end note
+  
+  :Submit Login;
+  
+  |System|
+  :Validate Input Format;
+  
+  if (Format Valid?) then (yes)
+    :Attempt Authentication;
+    
+    :Check Credentials;
+    
+    if (Credentials Valid?) then (yes)
+      :Regenerate Session;
+      
+      :Check User Role;
+      
+      if (Role = Admin?) then (yes)
+        |User|
+        :Redirect to Admin Dashboard;
+      else (user)
+        |User|
+        :Redirect to Home Page;
+      endif
+      
+    else (invalid)
+      |User|
+      :Show Error: Invalid Credentials;
+    endif
+    
+  else (invalid format)
+    |User|
+    :Show Validation Errors;
+  endif
+endif
+
+|User|
+:Use Application;
+
+if (Logout?) then (yes)
+  :Click Logout;
+  
+  |System|
+  :Destroy Session;
+  :Invalidate Session;
+  :Regenerate CSRF Token;
+  
+  |User|
+  :Redirect to Home Page;
+  stop
+else (continue)
+  :Continue Using App;
+  stop
+endif
+
+@enduml

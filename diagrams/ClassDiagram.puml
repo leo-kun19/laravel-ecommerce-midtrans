@@ -1,0 +1,182 @@
+@startuml E-Commerce Class Diagram
+
+' Models
+class User {
+  - id : int
+  - name : string
+  - email : string
+  - password : string
+  - address : text
+  - phone : string
+  - role : enum
+  - remember_token : string
+  --
+  + orders() : HasMany
+  + isAdmin() : bool
+  + canManageUsers() : bool
+  + canManageProducts() : bool
+  + canManageOrders() : bool
+}
+
+class Category {
+  - id : int
+  - name : string
+  - slug : string
+  - description : text
+  --
+  + products() : HasMany
+  + activeProducts() : HasMany
+  + getRouteKeyName() : string
+}
+
+class Product {
+  - id : int
+  - category_id : int
+  - name : string
+  - slug : string
+  - description : text
+  - price : decimal
+  - stock : int
+  - image : longtext
+  - is_active : bool
+  --
+  + category() : BelongsTo
+  + orderItems() : HasMany
+  + getPrimaryImage() : string
+  + getAllImages() : array
+  + scopeActive(query)
+  + scopeInStock(query)
+  + scopeAvailable(query)
+  + hasStock(quantity) : bool
+  + decreaseStock(quantity) : void
+  + increaseStock(quantity) : void
+  + getFormattedPriceAttribute() : string
+}
+
+class Order {
+  - id : int
+  - order_code : string
+  - user_id : int
+  - total_amount : decimal
+  - status : enum
+  - shipping_address : text
+  - midtrans_transaction_id : string
+  - midtrans_payment_type : string
+  - snap_token : string
+  - resi_code : string
+  --
+  + user() : BelongsTo
+  + items() : HasMany
+  + {static} generateOrderCode() : string
+  + updateStatus(status) : void
+  + getNextPossibleStatuses() : array
+  + hasStock() : bool
+  + calculateTotal() : Order
+}
+
+class OrderItem {
+  - id : int
+  - order_id : int
+  - product_id : int
+  - quantity : int
+  - price : decimal
+  --
+  + order() : BelongsTo
+  + product() : BelongsTo
+  + getSubtotal() : decimal
+}
+
+' Traits
+class HasSlug <<trait>> {
+  + {static} bootHasSlug() : void
+  + generateSlug() : string
+}
+
+class HasOrderStatus <<trait>> {
+  + updateStatus(status) : void
+  + isPending() : bool
+  + isPaid() : bool
+  + isProcessing() : bool
+  + isShipped() : bool
+  + isDelivered() : bool
+  + isCancelled() : bool
+}
+
+class ProductInventory <<trait>> {
+  + hasStock(quantity) : bool
+  + decreaseStock(quantity) : void
+  + increaseStock(quantity) : void
+}
+
+' Controllers
+class AuthController {
+  + showLoginForm() : View
+  + showRegisterForm() : View
+  + register(Request) : RedirectResponse
+  + login(Request) : RedirectResponse
+  + logout(Request) : RedirectResponse
+}
+
+class ProductController {
+  + index() : View
+  + store(Request) : RedirectResponse
+  + update(Request, Product) : RedirectResponse
+  + destroy(Product) : RedirectResponse
+}
+
+class CategoryController {
+  + index() : View
+  + store(Request) : RedirectResponse
+  + update(Request, Category) : RedirectResponse
+  + destroy(Category) : RedirectResponse
+}
+
+class OrdersController {
+  + index(Request) : View
+  + updateStatus(Request, Order) : RedirectResponse
+}
+
+class UserCheckoutController {
+  + process(Request) : JsonResponse
+  + updateStatus(Request) : JsonResponse
+}
+
+class PaymentNotificationController {
+  + handle(Request) : JsonResponse
+}
+
+class UserController {
+  + index() : View
+  + store(Request) : RedirectResponse
+  + update(Request, User) : RedirectResponse
+  + destroy(User) : RedirectResponse
+}
+
+class AdminMiddleware {
+  + handle(Request, Closure) : mixed
+}
+
+' Relationships - Models
+User "1" -- "0..*" Order : places >
+Order "1" *-- "1..*" OrderItem : contains >
+Product "1" -- "0..*" OrderItem : ordered in >
+Category "1" -- "0..*" Product : has >
+
+' Traits usage
+Category ..|> HasSlug : uses
+Product ..|> HasSlug : uses
+Product ..|> ProductInventory : uses
+Order ..|> HasOrderStatus : uses
+
+' Controller dependencies
+AuthController ..> User : manages
+ProductController ..> Product : manages
+ProductController ..> Category : uses
+CategoryController ..> Category : manages
+OrdersController ..> Order : manages
+UserCheckoutController ..> Order : creates
+UserCheckoutController ..> OrderItem : creates
+PaymentNotificationController ..> Order : updates
+UserController ..> User : manages
+
+@enduml

@@ -1,0 +1,139 @@
+@startuml Product Management Process
+
+|Admin|
+start
+:Access Product Management;
+
+|System|
+:Load Products & Categories;
+:Display Products List;
+note right
+  Paginated (10 per page)
+  With category information
+end note
+
+|Admin|
+
+if (Action?) then (Create New Product)
+  :Click Add Product;
+  :Fill Product Form;
+  note right
+    Required fields:
+    - Name
+    - Description
+    - Price
+    - Stock
+    - Image (max 2MB)
+    - Category
+  end note
+  
+  :Submit Form;
+  
+  |System|
+  :Validate Input;
+  
+  if (Validation Success?) then (yes)
+    :Begin Transaction;
+    
+    :Convert Image to Base64;
+    note right
+      Store as data URI
+      in database
+    end note
+    
+    :Generate Slug from Name;
+    
+    :Create Product Record;
+    
+    :Commit Transaction;
+    
+    |Admin|
+    :Show Success Message;
+    :Refresh Product List;
+    
+  else (failed)
+    |Admin|
+    :Show Validation Errors;
+  endif
+
+elseif (Action?) then (Update Product)
+  :Select Product to Edit;
+  :Modify Product Data;
+  note right
+    Can update:
+    - Name, Description
+    - Price, Stock
+    - Image (optional)
+    - Category
+    - Active status
+  end note
+  
+  :Submit Changes;
+  
+  |System|
+  :Validate Input;
+  
+  if (Validation Success?) then (yes)
+    :Begin Transaction;
+    
+    if (New Image Uploaded?) then (yes)
+      :Convert Image to Base64;
+    endif
+    
+    :Update Slug if Name Changed;
+    
+    :Update Product Record;
+    
+    :Commit Transaction;
+    
+    |Admin|
+    :Show Success Message;
+    :Refresh Product List;
+    
+  else (failed)
+    |Admin|
+    :Show Validation Errors;
+  endif
+
+elseif (Action?) then (Delete Product)
+  :Select Product to Delete;
+  :Confirm Deletion;
+  
+  |System|
+  :Begin Transaction;
+  
+  :Check Product Dependencies;
+  note right
+    Check if product has
+    order items
+  end note
+  
+  if (Has Dependencies?) then (yes)
+    :Cascade Delete Order Items;
+    note right
+      Due to foreign key
+      constraint
+    end note
+  endif
+  
+  :Delete Product Record;
+  
+  :Commit Transaction;
+  
+  |Admin|
+  :Show Success Message;
+  :Refresh Product List;
+
+else (View Only)
+  :Browse Products;
+  :View Product Details;
+endif
+
+|Admin|
+if (Continue Managing?) then (yes)
+  note left: Loop back
+else (no)
+  stop
+endif
+
+@enduml

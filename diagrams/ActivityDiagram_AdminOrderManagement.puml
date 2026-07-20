@@ -1,0 +1,114 @@
+@startuml Admin Order Management Process
+
+|Admin|
+start
+:Login to Admin Panel;
+
+|System|
+:Validate Admin Role;
+
+if (Is Admin?) then (yes)
+  |Admin|
+  :Access Order Management;
+  
+  |System|
+  :Load Orders with Relations;
+  note right
+    - User details
+    - Order items
+    - Product details
+  end note
+  
+  :Display Orders List;
+  note right
+    Paginated (5 per page)
+    With search & filter
+  end note
+  
+  |Admin|
+  
+  if (Search/Filter?) then (yes)
+    :Enter Search Criteria;
+    note right
+      Search by:
+      - Order ID
+      - Order Code
+      - User Name/Email
+      - Shipping Address
+      - Resi Code
+      
+      Filter by:
+      - Status
+    end note
+    
+    |System|
+    :Apply Search/Filter;
+    :Display Filtered Results;
+  endif
+  
+  |Admin|
+  :Select Order to Update;
+  
+  :Choose New Status;
+  note right
+    Status flow:
+    pending → paid → processing 
+    → shipped → delivered
+    
+    Can cancel at any stage
+  end note
+  
+  if (Status = Shipped?) then (yes)
+    :Enter Resi Code;
+    note right
+      Resi code is required
+      for shipped status
+    end note
+  endif
+  
+  :Submit Status Update;
+  
+  |System|
+  :Validate Status Update;
+  
+  if (Validation Success?) then (yes)
+    
+    if (Status = Shipped?) then (yes)
+      :Save Resi Code;
+    endif
+    
+    :Update Order Status;
+    
+    :Commit Changes;
+    
+    |Admin|
+    :Show Success Message;
+    
+    :Refresh Order List;
+    
+  else (failed)
+    |Admin|
+    :Show Error Message;
+    note right
+      e.g., "Resi code required"
+    end note
+  endif
+  
+  |Admin|
+  if (Continue Managing?) then (yes)
+    :Select Another Order;
+    note left: Loop back
+  else (no)
+    stop
+  endif
+  
+else (no)
+  |System|
+  :Deny Access;
+  
+  |Admin|
+  :Show Unauthorized Message;
+  stop
+endif
+
+@enduml
